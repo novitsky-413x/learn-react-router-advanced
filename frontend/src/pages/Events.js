@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { useLoaderData, defer, Await } from 'react-router-dom';
+import { useLoaderData, Await } from 'react-router-dom';
 import EventsList from '../components/EventsList';
 
 function EventsPage() {
@@ -24,8 +24,8 @@ async function loadEvents() {
     }
 }
 
-export function loader() {
-    return defer({
+export async function loader() {
+    return {
         events: loadEvents(),
-    });
+    };
 }
