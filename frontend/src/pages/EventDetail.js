@@ -1,22 +1,54 @@
-import { redirect, useRouteLoaderData } from 'react-router-dom';
+import { Suspense } from 'react';
+import { redirect, useRouteLoaderData, Await } from 'react-router-dom';
 import EventItem from '../components/EventItem';
+import EventsList from '../components/EventsList';
 
 function EventDetailPage() {
-    const data = useRouteLoaderData('event-detail');
-    return <EventItem event={data.event} />;
+    const { event, events } = useRouteLoaderData('event-detail');
+    return (
+        <>
+            <Suspense fallback={<p style={{ textAlign: 'center' }}>Loading event...</p>}>
+                <Await resolve={event}>{(loadedEvent) => <EventItem event={loadedEvent} />}</Await>
+            </Suspense>
+            <Suspense fallback={<p style={{ textAlign: 'center' }}>Loading events...</p>}>
+                <Await resolve={events}>{(loadedEvents) => <EventsList events={loadedEvents} />}</Await>
+            </Suspense>
+        </>
+    );
 }
 export default EventDetailPage;
 
-export async function loader({ request, params }) {
-    const id = params.eventId;
+async function loadEvent(id) {
     const response = await fetch('http://localhost:8080/events/' + id);
     if (!response.ok) {
         throw new Response(JSON.stringify({ message: 'Could not fetch details for selected event.' }), {
             status: 500,
         });
     } else {
-        return response;
+        const resData = await response.json();
+        return resData.event;
     }
+}
+
+async function loadEvents() {
+    const response = await fetch('http://localhost:8080/events');
+    if (!response.ok) {
+        // return { isError: true, message: 'Could not fetch events.' };
+        throw new Response(JSON.stringify({ message: 'Could not fetch events.' }), { status: 500 });
+    } else {
+        const resData = await response.json();
+        return resData.events;
+    }
+}
+
+export async function loader({ request, params }) {
+    const id = params.eventId;
+    return {
+        event: await loadEvent(id), // waits for the event to load before rendering the page
+        events: loadEvents(), // will load events after the page has been rendered
+        /* thus 'await' is a switch to control which data should be awaited before rendering/moving to the page,
+        and which data should be deferred (load the data after moving to the page) */
+    };
 }
 
 export async function action({ request, params }) {
